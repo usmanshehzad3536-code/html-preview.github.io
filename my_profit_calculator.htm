@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>My Profit Calculator</title>
+<style>
+  :root{--bg:#f4fbff;--card:#fff;--accent:#1e6fdb;--muted:#6b7280}
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;margin:0;background:var(--bg);color:#0f172a}
+  .wrap{max-width:1200px;margin:12px auto;padding:12px}
+  .header{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+  h1{margin:0;color:var(--accent);font-size:20px}
+  .muted{color:var(--muted)}
+  .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(18,40,80,0.06)}
+  .layout{display:flex;gap:16px;align-items:flex-start}
+  .left{flex:1}
+  .right{width:420px;min-width:300px}
+  label{display:block;margin-top:10px;font-weight:700;color:#0f172a;font-size:14px}
+  input[type=number], select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eef9;margin-top:6px;background:#fbfdff;box-sizing:border-box;font-size:14px}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  button{background:var(--accent);color:white;padding:10px 14px;border-radius:8px;border:0;font-weight:700;cursor:pointer}
+  .btn-alt{background:#0ea5a3}
+  .btn-muted{background:#64748b}
+  .results{margin-top:8px;padding:12px;border-radius:10px;background:linear-gradient(180deg,#ffffff,#f8fbff);box-shadow:inset 0 1px 0 rgba(255,255,255,0.6)}
+  .row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed #e6eef9;font-size:14px}
+  .big{font-weight:800;font-size:1.05rem;color:#0f172a}
+  canvas#pie{width:100%;height:260px;border-radius:8px;background:transparent}
+  .footer{margin-top:10px;color:var(--muted);font-size:0.9rem;text-align:center}
+  .small{font-size:12px;color:var(--muted)}
+  .control-row{display:flex;gap:8px;align-items:center}
+  .control-row > *{margin:0}
+  .wide{grid-column: span 2}
+  @media (max-width:980px){
+    .layout{flex-direction:column}
+    .right{width:100%;min-width:unset}
+    .grid{grid-template-columns:1fr}
+  }
+  /* ensure buttons go under currency on small screens */
+  @media (max-width:520px){
+    .control-row{flex-direction:column;align-items:stretch}
+    .control-row select{width:100%}
+    .control-row .actions{order:2;width:100%;display:flex;justify-content:space-between}
+    .control-row .actions button{flex:1;margin:4px 0}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="header">
+      <h1>My Profit Calculator</h1>
+      <div class="muted">Defaults: Income 2%, Sales 2%, VAT 16%, Payment fee 2.25%, Shipping 6% (cap 150). All editable.</div>
+    </div>
+
+    <div class="card layout">
+      <div class="left">
+        <div class="grid">
+          <div>
+            <label>Product Cost</label>
+            <input id="productCost" type="number" step="0.01" value="0" />
+
+            <label>Packaging Cost</label>
+            <input id="packagingCost" type="number" step="0.01" value="0" />
+
+            <label>Extra Charges</label>
+            <input id="extraCharges" type="number" step="0.01" value="0" />
+
+            <label>Selling Price</label>
+            <input id="sellingPrice" type="number" step="0.01" value="0" />
+          </div>
+
+          <div>
+            <label>Daraz Commission (%) <span class="small">applied on selling price</span></label>
+            <input id="darazPct" type="number" step="0.01" value="0" />
+
+            <label>Handling Fee (enter amount)</label>
+            <input id="handlingFee" type="number" step="0.01" value="0" />
+
+            <label>Payment Fee (%) <span class="small">applied on selling price</span></label>
+            <input id="paymentFeePct" type="number" step="0.01" value="2.25" />
+          </div>
+
+          <div class="wide">
+            <label>Shipping</label>
+            <div class="small" style="margin-bottom:6px">Default: 6% of selling price, capped at 150. You can auto-calc or enter manually.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <div style="flex:1;min-width:120px">
+                <label class="small">Shipping % (auto)</label>
+                <input id="shippingPct" type="number" step="0.01" value="6" />
+              </div>
+              <div style="flex:1;min-width:120px">
+                <label class="small">Shipping cap (max amount)</label>
+                <input id="shippingCap" type="number" step="0.01" value="150" />
+              </div>
+              <div style="flex:1;min-width:140px">
+                <label class="small">Mode</label>
+                <select id="shippingMode">
+                  <option value="auto">Auto (use % and cap)</option>
+                  <option value="manual">Manual amount</option>
+                </select>
+              </div>
+              <div style="flex:1;min-width:140px">
+                <label class="small">Shipping amount (manual)</label>
+                <input id="shippingManual" type="number" step="0.01" value="0" />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:10px">
+          <div>
+            <label>VAT (%)</label>
+            <input id="vatPct" type="number" step="0.01" value="16" />
+          </div>
+          <div>
+            <label>Sales Tax (%) <span class="small">applied on selling price</span></label>
+            <input id="salesTaxPct" type="number" step="0.01" value="2" />
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:8px">
+          <div>
+            <label>Income Tax (%) <span class="small">applied on selling price</span></label>
+            <input id="incomeTaxPct" type="number" step="0.01" value="2" />
+          </div>
+          <div>
+            <label>Units Sold per Day</label>
+            <input id="unitsPerDay" type="number" step="1" value="0" />
+          </div>
+        </div>
+
+        <div style="margin-top:12px" class="control-row">
+          <label style="min-width:90px;margin-top:4px">Currency</label>
+          <select id="currency" style="width:140px">
+            <option value="PKR">PKR</option>
+            <option value="USD">USD</option>
+          </select>
+
+          <div class="actions" style="margin-left:8px">
+            <button id="calcBtn">Calculate</button>
+            <button id="imgShareBtn" class="btn-alt">Share as Image</button>
+            <button id="resetBtn" class="btn-muted">Reset</button>
+          </div>
+        </div>
+
+        <div style="margin-top:10px" class="muted">VAT is applied on commission, payment fee, shipping and handling.</div>
+      </div>
+
+      <div class="right">
+        <div id="results" class="results" style="display:none">
+          <h3 style="margin:0">Results</h3>
+
+          <div class="row"><div>Total product cost</div><div id="resTotalProduct" class="big">0</div></div>
+
+          <div class="row"><div>Daraz commission</div><div id="resDaraz">0</div></div>
+          <div class="row"><div>Payment fee</div><div id="resPaymentFee">0</div></div>
+          <div class="row"><div>Shipping fee</div><div id="resShipping">0</div></div>
+          <div class="row"><div>Handling fee</div><div id="resHandling">0</div></div>
+          <div class="row"><div>Packaging cost</div><div id="resPackaging">0</div></div>
+          <div class="row"><div>Extra charges</div><div id="resExtra">0</div></div>
+
+          <div class="row"><div>Total VAT</div><div id="resVAT">0</div></div>
+          <div class="row"><div>Sales tax</div><div id="resSalesTax">0</div></div>
+          <div class="row"><div>Income tax</div><div id="resIncomeTax">0</div></div>
+
+          <div class="row"><div><strong>Total deductions</strong></div><div id="resTotalDeductions">0</div></div>
+
+          <div class="row"><div><strong>Net profit</strong></div><div id="resNetProfit" class="big">0</div></div>
+          <div class="row"><div>Profit percentage</div><div id="resProfitPct">0%</div></div>
+          <div class="row"><div>Estimated monthly profit</div><div id="resMonthly">0</div></div>
+
+          <canvas id="pie"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">Tip: On mobile use Chrome menu → Add to Home screen to install this page like an app.</div>
+  </div>
+
+<script>
+/* helpers */
+function num(v){ return Number(v) || 0 }
+function fmt(v){ return (Math.round((v + Number.EPSILON) * 100) / 100).toLocaleString() }
+
+/* draw pie chart */
+function drawPie(cost, profit){
+  const c = document.getElementById('pie');
+  if(!c) return;
+  const ctx = c.getContext('2d');
+  const w = c.width = c.clientWidth;
+  const h = c.height = c.clientHeight;
+  ctx.clearRect(0,0,w,h);
+  const absCost = Math.max(0, Math.abs(cost));
+  const absProfit = Math.max(0, profit);
+  const total = absCost + absProfit || 1;
+  const radius = Math.min(w,h)/2 - 10;
+  const cx = w/2, cy = h/2;
+  let start = -Math.PI/2;
+
+  const costAngle = (absCost / total) * Math.PI * 2;
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.fillStyle = '#60a5fa';
+  ctx.arc(cx,cy,radius,start,start + costAngle);
+  ctx.closePath(); ctx.fill();
+  start += costAngle;
+
+  const profitAngle = (absProfit / total) * Math.PI * 2;
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.fillStyle = profit >= 0 ? '#06b6d4' : '#fb7185';
+  ctx.arc(cx,cy,radius,start,start + profitAngle);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 14px system-ui';
+  ctx.textAlign = 'center';
+  ctx.fillText('Cost vs Profit', cx, cy - 12);
+  ctx.font = '13px system-ui';
+  ctx.fillText('Cost: ' + fmt(cost), cx, cy + 8);
+  ctx.fillText('Profit: ' + fmt(profit), cx, cy + 26);
+}
+
+/* main calc */
+function calculateAll(){
+  const productCost = num(document.getElementById('productCost').value);
+  const packagingCost = num(document.getElementById('packagingCost').value);
+  const extraCharges = num(document.getElementById('extraCharges').value);
+  const sellingPrice = num(document.getElementById('sellingPrice').value);
+  const darazPct = num(document.getElementById('darazPct').value);
+  const handlingFee = num(document.getElementById('handlingFee').value);
+  const paymentFeePct = num(document.getElementById('paymentFeePct').value);
+  const vatPct = num(document.getElementById('vatPct').value);
+  const salesTaxPct = num(document.getElementById('salesTaxPct').value);
+  const incomeTaxPct = num(document.getElementById('incomeTaxPct').value);
+  const unitsPerDay = num(document.getElementById('unitsPerDay').value);
+  const currency = document.getElementById('currency').value;
+
+  // shipping: auto or manual
+  const shippingMode = document.getElementById('shippingMode').value;
+  let shippingFee = 0;
+  if(shippingMode === 'auto'){
+    const shippingPct = num(document.getElementById('shippingPct').value);
+    const shippingCap = num(document.getElementById('shippingCap').value);
+    shippingFee = sellingPrice * (shippingPct/100);
+    if(shippingCap > 0) shippingFee = Math.min(shippingFee, shippingCap);
+  } else {
+    shippingFee = num(document.getElementById('shippingManual').value);
+  }
+
+  // calculations
+  const darazCommission = sellingPrice * (darazPct / 100);
+  const paymentFee = sellingPrice * (paymentFeePct / 100);
+  const vatOnItems = (darazCommission + paymentFee + shippingFee + handlingFee) * (vatPct / 100);
+  const salesTaxAmount = sellingPrice * (salesTaxPct / 100);
+  const incomeTaxAmount = sellingPrice * (incomeTaxPct / 100);
+
+  const totalDeductions = darazCommission + paymentFee + shippingFee + handlingFee + vatOnItems + salesTaxAmount + incomeTaxAmount;
+  const totalProductCost = productCost + packagingCost + extraCharges + totalDeductions;
+
+  const netProfit = sellingPrice - totalProductCost;
+  const profitPct = sellingPrice ? (netProfit / sellingPrice) * 100 : 0;
+  const monthlyProfit = netProfit * unitsPerDay * 30;
+
+  // write results
+  document.getElementById('resTotalProduct').innerText = currency + ' ' + fmt(totalProductCost);
+  document.getElementById('resDaraz').innerText = currency + ' ' + fmt(darazCommission);
+  document.getElementById('resPaymentFee').innerText = currency + ' ' + fmt(paymentFee);
+  document.getElementById('resShipping').innerText = currency + ' ' + fmt(shippingFee);
+  document.getElementById('resHandling').innerText = currency + ' ' + fmt(handlingFee);
+  document.getElementById('resPackaging').innerText = currency + ' ' + fmt(packagingCost);
+  document.getElementById('resExtra').innerText = currency + ' ' + fmt(extraCharges);
+  document.getElementById('resVAT').innerText = currency + ' ' + fmt(vatOnItems);
+  document.getElementById('resSalesTax').innerText = currency + ' ' + fmt(salesTaxAmount);
+  document.getElementById('resIncomeTax').innerText = currency + ' ' + fmt(incomeTaxAmount);
+  document.getElementById('resTotalDeductions').innerText = currency + ' ' + fmt(totalDeductions);
+  document.getElementById('resNetProfit').innerText = currency + ' ' + fmt(netProfit);
+  document.getElementById('resProfitPct').innerText = profitPct.toFixed(2) + '%';
+  document.getElementById('resMonthly').innerText = currency + ' ' + fmt(monthlyProfit);
+
+  document.getElementById('results').style.display = 'block';
+  drawPie(totalProductCost, netProfit);
+
+  // save summary
+  window._summary = {
+    currency, sellingPrice, productCost, packagingCost, extraCharges, totalProductCost, netProfit, profitPct, unitsPerDay, monthlyProfit,
+    darazCommission, paymentFee, shippingFee, handlingFee, vatOnItems, salesTaxAmount, incomeTaxAmount
+  };
+}
+
+/* share as image */
+async function shareAsImage(){
+  const s = window._summary;
+  if(!s){ alert('Please calculate first'); return; }
+
+  const w = 900, h = 600;
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+
+  ctx.fillStyle = '#f4fbff';
+  ctx.fillRect(0,0,w,h);
+  ctx.fillStyle = '#1e6fdb';
+  ctx.fillRect(0,0,w,88);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 26px system-ui';
+  ctx.textAlign = 'left';
+  ctx.fillText('My Profit Calculator - Summary', 20, 54);
+
+  ctx.fillStyle = '#0f172a';
+  ctx.font = '16px system-ui';
+  const leftX = 28, col2 = 460;
+  let y = 120;
+  const addLine = (k,v) => { ctx.fillText(k, leftX, y); ctx.fillText(v, col2, y); y += 30; };
+
+  addLine('Selling Price:', s.currency + ' ' + (Math.round(s.sellingPrice*100)/100).toLocaleString());
+  addLine('Product Cost:', s.currency + ' ' + (Math.round(s.productCost*100)/100).toLocaleString());
+  addLine('Packaging Cost:', s.currency + ' ' + (Math.round(s.packagingCost*100)/100).toLocaleString());
+  addLine('Extra Charges:', s.currency + ' ' + (Math.round(s.extraCharges*100)/100).toLocaleString());
+  addLine('Total Product Cost:', s.currency + ' ' + (Math.round(s.totalProductCost*100)/100).toLocaleString());
+  addLine('Net Profit:', s.currency + ' ' + (Math.round(s.netProfit*100)/100).toLocaleString());
+  addLine('Profit %:', s.profitPct.toFixed(2) + '%');
+  addLine('Estimated monthly profit:', s.currency + ' ' + (Math.round(s.monthlyProfit*100)/100).toLocaleString());
+
+  ctx.font = '12px system-ui';
+  ctx.fillStyle = '#6b7280';
+  ctx.fillText('Calculated with My Profit Calculator', 28, h-28);
+
+  try{
+    const dataUrl = c.toDataURL('image/png');
+    const res = await fetch(dataUrl);
+    const blob = await res.blob();
+    const filesArray = [new File([blob], 'profit-summary.png', {type: blob.type})];
+    if(navigator.canShare && navigator.canShare({files: filesArray})){
+      await navigator.share({files: filesArray, title: 'Profit summary'});
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = 'profit-summary.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    alert('Summary image downloaded. Share it from your device.');
+  }catch(e){
+    try{
+      await navigator.clipboard.writeText(c.toDataURL('image/png'));
+      alert('Image data copied to clipboard.');
+    }catch(err){
+      prompt('Image data (copy):', c.toDataURL('image/png'));
+    }
+  }
+}
+
+/* wire events */
+document.getElementById('calcBtn').addEventListener('click', calculateAll);
+document.getElementById('imgShareBtn').addEventListener('click', shareAsImage);
+document.getElementById('resetBtn').addEventListener('click', function(){
+  document.getElementById('productCost').value = 0;
+  document.getElementById('packagingCost').value = 0;
+  document.getElementById('extraCharges').value = 0;
+  document.getElementById('sellingPrice').value = 0;
+  document.getElementById('darazPct').value = 0;
+  document.getElementById('shippingPct').value = 6;
+  document.getElementById('shippingCap').value = 150;
+  document.getElementById('shippingMode').value = 'auto';
+  document.getElementById('shippingManual').value = 0;
+  document.getElementById('handlingFee').value = 0;
+  document.getElementById('paymentFeePct').value = 2.25;
+  document.getElementById('vatPct').value = 16;
+  document.getElementById('salesTaxPct').value = 2;
+  document.getElementById('incomeTaxPct').value = 2;
+  document.getElementById('unitsPerDay').value = 0;
+  document.getElementById('currency').value = 'PKR';
+  document.getElementById('results').style.display = 'none';
+  window._summary = null;
+  const pc = document.getElementById('pie'); if(pc){ const ctx = pc.getContext('2d'); ctx.clearRect(0,0,pc.width,pc.height); }
+});
+
+/* Enter to calculate */
+document.addEventListener('keydown', function(e){ if(e.key === 'Enter'){ calculateAll(); } });
+</script>
+</body>
+  </html>
