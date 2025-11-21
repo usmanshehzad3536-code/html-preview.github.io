@@ -1,0 +1,293 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Daraz Profit Calculator (Offline)</title>
+  <style>
+    :root{--blue:#0b6eff;--light:#f6fbff;--card:#ffffff;--muted:#666}
+    *{box-sizing:border-box;font-family:Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial}
+    body{margin:0;background:linear-gradient(180deg,var(--light),#fff);color:#122;}
+    .wrap{max-width:1100px;margin:24px auto;padding:18px}
+    header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+    header h1{font-size:20px;margin:0;color:var(--blue)}
+    .grid{display:flex;gap:18px;background:var(--card);border-radius:12px;padding:18px;box-shadow:0 6px 20px rgba(6,42,112,0.08)}
+    .col{flex:1;min-width:260px}
+    .left{border-right:1px solid rgba(10,20,60,0.04);padding-right:14px}
+    .right{padding-left:14px}
+    label{display:block;font-weight:600;margin-top:10px;margin-bottom:6px}
+    .row{display:flex;gap:8px}
+    input[type="number"], input[type="text"], select{width:100%;padding:10px;border-radius:8px;border:1px solid #e6eefc;background:#fff}
+    .small{font-size:13px;color:var(--muted);margin-top:4px}
+    .inline{display:flex;align-items:center;gap:8px}
+    .info{width:20px;height:20;border-radius:50%;display:inline-grid;place-items:center;background:var(--blue);color:white;font-weight:700;font-size:12px;cursor:pointer}
+    .btns{display:flex;gap:8px;margin-top:14px}
+    button{padding:10px 14px;border-radius:8px;border:0;cursor:pointer;font-weight:600}
+    .btn-calc{background:var(--blue);color:#fff}
+    .btn-reset{background:#f0f6ff;color:var(--blue);border:1px solid rgba(11,110,255,0.12)}
+    .btn-share{background:#e8f2ff;color:var(--blue)}
+    .results{background:#f8fbff;padding:12px;border-radius:10px}
+    .line{display:flex;justify-content:space-between;padding:8px 6px;border-bottom:1px dashed rgba(10,20,60,0.04)}
+    .line:last-child{border-bottom:0}
+    .total{font-weight:800;color:#09327a}
+    .k{font-size:13px;color:var(--muted)}
+    .note{font-size:13px;color:var(--muted);margin-top:10px}
+    footer{margin-top:12px;font-size:13px;color:var(--muted)}/* tooltip / modal */
+.popover{position:fixed;z-index:9999;max-width:320px;background:#fff;border-radius:8px;padding:12px;box-shadow:0 8px 30px rgba(6,42,112,0.12);display:none}
+.popover p{margin:0;font-size:14px;color:#082046}
+
+/* responsive */
+@media (max-width:820px){
+  .grid{flex-direction:column}
+  .left{border-right:none;padding-right:0}
+  .right{padding-left:0}
+}
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="24" height="24" rx="6" fill="var(--blue)"/><path d="M7 12h10M7 7h10M7 17h6" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h1>Daraz Profit Calculator — Offline</h1>
+    </header><div class="grid">
+  <div class="col left">
+    <!-- Inputs -->
+    <label>Purchasing price (PKR)</label>
+    <input id="purchase" type="number" min="0" step="0.01" value="0">
+
+    <label>Selling price (PKR)</label>
+    <input id="selling" type="number" min="0" step="0.01" value="0">
+
+    <label>Daraz commission % <span class="info" data-key="commission">i</span></label>
+    <input id="commission" type="number" min="0" step="0.01" value="0">
+    <div class="small">Commission percentage applied on selling price.</div>
+
+    <label>Payment fee % <span class="info" data-key="payment">i</span></label>
+    <input id="paymentFee" type="number" min="0" step="0.01" value="0">
+    <div class="small">Payment gateway fee percentage applied on selling price.</div>
+
+    <label>Handling fee (PKR) <span class="info" data-key="handling">i</span></label>
+    <input id="handlingFee" type="number" min="0" step="0.01" value="0">
+    <div class="small">Fixed handling cost per order (seller-paid). VAT applies to this amount.</div>
+
+    <label>Shipping charges (customer pays) (PKR) <span class="info" data-key="shipCharges">i</span></label>
+    <input id="shippingCharges" type="number" min="0" step="0.01" value="0">
+    <div class="small">Shipping amount customer pays. Not part of product cost, but VAT can apply and must be included in tax calculations.</div>
+
+    <label>Shipping cost (seller-paid) (PKR) <span class="info" data-key="shipCost">i</span></label>
+    <input id="shippingCost" type="number" min="0" step="0.01" value="0">
+    <div class="small">Shipping cost borne by seller (if you offer free shipping). Included in product cost; VAT applies.</div>
+
+    <label>Packaging cost (PKR)</label>
+    <input id="packaging" type="number" min="0" step="0.01" value="0">
+
+    <label>Extra charges (PKR)</label>
+    <input id="extra" type="number" min="0" step="0.01" value="0">
+
+    <label>VAT % <span class="info" data-key="vat">i</span></label>
+    <input id="vat" type="number" min="0" step="0.01" value="0">
+    <div class="small">VAT applies to: selling price, handling fee, payment fee, shipping charges and shipping cost.</div>
+
+    <label>Daraz Vouchers % (discount on selling price)</label>
+    <input id="vouchers" type="number" min="0" step="0.01" value="0">
+
+    <label>Income tax % (applied on selling price)</label>
+    <input id="incomeTax" type="number" min="0" step="0.01" value="0">
+
+    <label>Sales tax % (applied on selling price)</label>
+    <input id="salesTax" type="number" min="0" step="0.01" value="0">
+
+    <div class="btns">
+      <button class="btn-calc" id="calcBtn">Calculate</button>
+      <button class="btn-reset" id="resetBtn">Reset</button>
+      <button class="btn-share" id="shareBtn">Share results</button>
+    </div>
+
+    <p class="note">Note: Shipping charges = amount customer pays (not added to product cost). Shipping cost = seller-paid shipping included in cost. Click the small "i" for details on how each fee/tax is applied.</p>
+  </div>
+
+  <div class="col right">
+    <div class="results">
+      <div class="line"><div>Revenue (Selling price)</div><div id="rSelling">0.00</div></div>
+      <div class="line"><div>Daraz Commission (<span id="cPct">0</span>%)</div><div id="rCommission">0.00</div></div>
+      <div class="line"><div>Payment fee (<span id="pPct">0</span>%)</div><div id="rPayment">0.00</div></div>
+      <div class="line"><div>Daraz Vouchers (<span id="vPct">0</span>%)</div><div id="rVouchers">0.00</div></div>
+      <div class="line"><div>Income tax (<span id="iPct">0</span>%)</div><div id="rIncomeTax">0.00</div></div>
+      <div class="line"><div>Sales tax (<span id="sPct">0</span>%)</div><div id="rSalesTax">0.00</div></div>
+      <div class="line"><div>VAT (<span id="vatPct">0</span>%)</div><div id="rVAT">0.00</div></div>
+
+      <div style="height:8px"></div>
+
+      <div class="line"><div>Purchase price</div><div id="rPurchase">0.00</div></div>
+      <div class="line"><div>Shipping cost (seller-paid)</div><div id="rShipCost">0.00</div></div>
+      <div class="line"><div>Packaging</div><div id="rPackaging">0.00</div></div>
+      <div class="line"><div>Handling fee</div><div id="rHandling">0.00</div></div>
+      <div class="line"><div>Extra charges</div><div id="rExtra">0.00</div></div>
+
+      <div style="height:8px"></div>
+
+      <div class="line total"><div>Total product cost</div><div id="rTotalCost">0.00</div></div>
+      <div class="line total"><div>Net revenue (after fees & discounts)</div><div id="rNetRevenue">0.00</div></div>
+      <div class="line total"><div>Profit (Net revenue - Total cost)</div><div id="rProfit">0.00</div></div>
+      <div class="line"><div>Profit %</div><div id="rProfitPct">0.00%</div></div>
+
+    </div>
+
+    <footer>
+      <strong>Applied rules (click "i" near a field for details):</strong>
+      <ul>
+        <li><strong>Daraz commission</strong>: percentage applied on selling price.</li>
+        <li><strong>Payment fee</strong>: percentage applied on selling price.</li>
+        <li><strong>Daraz vouchers</strong>: percentage discount applied on selling price (reduces revenue).</li>
+        <li><strong>Income tax & Sales tax</strong>: percentages applied on selling price.</li>
+        <li><strong>VAT</strong>: percentage applied on each of — selling price, handling fee, payment fee, shipping charges and shipping cost. (VAT amount shown is the total VAT calculated over those bases.)</li>
+      </ul>
+    </footer>
+  </div>
+</div>
+
+  </div>  <!-- Popover for info -->  <div id="popover" class="popover" role="dialog" aria-hidden="true"></div>  <script>
+    // helper
+    const $ = id => document.getElementById(id);
+    const fmt = v => Number(v||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    const infoText = {
+      commission: 'Daraz commission is calculated as: (commission% / 100) * selling price. It is charged on the selling price and reduces your received amount.',
+      payment: 'Payment fee is calculated as: (payment fee% / 100) * selling price. It is a fee charged by payment gateway and reduces your received amount. VAT is also applied to this fee for VAT calculations.',
+      handling: 'Handling fee is a fixed amount per order (seller-paid). This is included in your product cost. VAT is applied to this amount for VAT calculations.',
+      shipCharges: 'Shipping charges are the amount the customer pays for shipping. These are not part of product cost, but VAT may apply to them and they are included in VAT calculation here.',
+      shipCost: 'Shipping cost is what the seller pays when offering free shipping. This is part of product cost and VAT is applied to it.',
+      vat: 'VAT is applied to: selling price, handling fee, payment fee, shipping charges and shipping cost. VAT = VAT% * (sum of those bases).',
+    }
+
+    document.querySelectorAll('.info').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const key = btn.getAttribute('data-key');
+    alert(infoText[key]);
+  });
+});
+    window.addEventListener('click', (e)=>{ if(!e.target.closest('.info') && !e.target.closest('#popover')){ pop.style.display='none'; pop.setAttribute('aria-hidden','true'); } })
+
+    // calculate
+    function calculate(){
+      const purchase = parseFloat($('purchase').value) || 0;
+      const selling = parseFloat($('selling').value) || 0;
+      const commissionPct = parseFloat($('commission').value) || 0;
+      const paymentPct = parseFloat($('paymentFee').value) || 0;
+      const handling = parseFloat($('handlingFee').value) || 0;
+      const shipCharges = parseFloat($('shippingCharges').value) || 0;
+      const shipCost = parseFloat($('shippingCost').value) || 0;
+      const packaging = parseFloat($('packaging').value) || 0;
+      const extra = parseFloat($('extra').value) || 0;
+      const vatPct = parseFloat($('vat').value) || 0;
+      const vouchersPct = parseFloat($('vouchers').value) || 0;
+      const incomePct = parseFloat($('incomeTax').value) || 0;
+      const salesPct = parseFloat($('salesTax').value) || 0;
+
+      // basic fee calculations (based on selling price)
+      const commissionAmt = selling * commissionPct/100;
+      const paymentAmt = selling * paymentPct/100;
+      const vouchersAmt = selling * vouchersPct/100; // this reduces revenue
+      const incomeAmt = selling * incomePct/100;
+      const salesAmt = selling * salesPct/100;
+
+      // VAT base: selling price + handling fee + payment fee + shipping charges + shipping cost
+      const vatBase = selling + handling + paymentAmt + shipCharges + shipCost;
+      const vatAmt = vatBase * vatPct/100;
+
+      // Total product cost: purchase price + shipping cost (seller-paid) + packaging + extra charges + handling fee
+      const totalProductCost = purchase + shipCost + packaging + extra + handling;
+
+      // Net revenue: selling price + shipping charges (customer paid) - commission - payment fee - vouchers - income tax - sales tax - VAT
+      // Note: VAT is charged on selling price etc and typically collected from customer; we include VAT here as an obligation.
+      const grossReceived = selling + shipCharges; // amount customer pays total
+      const totalDeductions = commissionAmt + paymentAmt + vouchersAmt + incomeAmt + salesAmt + vatAmt;
+      const netRevenue = grossReceived - totalDeductions;
+
+      // Profit
+      const profit = netRevenue - totalProductCost;
+      const profitPct = totalProductCost !== 0 ? (profit / totalProductCost * 100) : 0;
+
+      // update UI
+      $('rSelling').textContent = fmt(selling);
+      $('cPct').textContent = commissionPct.toFixed(2);
+      $('pPct').textContent = paymentPct.toFixed(2);
+      $('vPct').textContent = vouchersPct.toFixed(2);
+      $('iPct').textContent = incomePct.toFixed(2);
+      $('sPct').textContent = salesPct.toFixed(2);
+      $('vatPct').textContent = vatPct.toFixed(2);
+
+      $('rCommission').textContent = fmt(commissionAmt);
+      $('rPayment').textContent = fmt(paymentAmt);
+      $('rVouchers').textContent = fmt(vouchersAmt);
+      $('rIncomeTax').textContent = fmt(incomeAmt);
+      $('rSalesTax').textContent = fmt(salesAmt);
+      $('rVAT').textContent = fmt(vatAmt);
+
+      $('rPurchase').textContent = fmt(purchase);
+      $('rShipCost').textContent = fmt(shipCost);
+      $('rPackaging').textContent = fmt(packaging);
+      $('rHandling').textContent = fmt(handling);
+      $('rExtra').textContent = fmt(extra);
+
+      $('rTotalCost').textContent = fmt(totalProductCost);
+      $('rNetRevenue').textContent = fmt(netRevenue);
+      $('rProfit').textContent = fmt(profit);
+      $('rProfitPct').textContent = profitPct.toFixed(2) + '%';
+
+      // store last results for sharing
+      window._lastResults = {
+        purchase, selling, commissionAmt, paymentAmt, vouchersAmt, incomeAmt, salesAmt, vatAmt,
+        totalProductCost, netRevenue, profit, profitPct, shipCharges, shipCost, packaging, handling, extra
+      };
+    }
+
+    // reset
+    $('resetBtn').addEventListener('click', ()=>{
+      document.querySelectorAll('input').forEach(i=>{ if(i.type==='number') i.value=0 });
+      calculate();
+    })
+
+    // calculate on button
+    $('calcBtn').addEventListener('click', ()=> calculate());
+
+    // initial calc
+    calculate();
+
+    // share results => copy summary to clipboard and offer download
+    $('shareBtn').addEventListener('click', ()=>{
+      const r = window._lastResults || {};
+      const txt = [];
+      txt.push('Daraz Profit Calculator - Results');
+      txt.push('--------------------------------');
+      txt.push(`Selling price: ${fmt(r.selling||0)}`);
+      txt.push(`Purchase price: ${fmt(r.purchase||0)}`);
+      txt.push(`Total product cost: ${fmt(r.totalProductCost||0)}`);
+      txt.push(`Net revenue: ${fmt(r.netRevenue||0)}`);
+      txt.push(`Profit: ${fmt(r.profit||0)} (${(r.profitPct||0).toFixed(2)}%)`);
+      txt.push('\nBreakdown:');
+      txt.push(`Daraz commission: ${fmt(r.commissionAmt||0)}`);
+      txt.push(`Payment fee: ${fmt(r.paymentAmt||0)}`);
+      txt.push(`Vouchers (discount): ${fmt(r.vouchersAmt||0)}`);
+      txt.push(`Income tax: ${fmt(r.incomeAmt||0)}`);
+      txt.push(`Sales tax: ${fmt(r.salesAmt||0)}`);
+      txt.push(`VAT (total): ${fmt(r.vatAmt||0)}`);
+
+      const blob = new Blob([txt.join('\n')], {type: 'text/plain'});
+      const url = URL.createObjectURL(blob);
+
+      // copy to clipboard
+      navigator.clipboard?.writeText(txt.join('\n')).then(()=>{
+        alert('Results copied to clipboard. A text file will be downloaded as well.');
+      }, ()=>{ alert('Could not copy to clipboard, but file will download.'); });
+
+      // download
+      const a = document.createElement('a');
+      a.href = url; a.download = 'daraz-profit-results.txt'; document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    })
+
+  </script></body>
+</html>
