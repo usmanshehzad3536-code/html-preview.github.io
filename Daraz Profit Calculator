@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Daraz Profit Calculator</title>
+<style>
+ body {
+   font-family: Arial, sans-serif;
+   background: #f4f7ff;
+   margin: 0;
+   padding: 20px;
+ }
+ .container {
+   display: flex;
+   flex-wrap: wrap;
+   gap: 20px;
+ }
+ .box {
+   background: #fff;
+   padding: 20px;
+   border-radius: 10px;
+   box-shadow: 0 0 10px rgba(0,0,0,0.1);
+   flex: 1;
+   min-width: 300px;
+ }
+ h2 { margin-top: 0; }
+ label { display: block; margin-bottom: 6px; font-weight: bold; }
+ input {
+   width: 100%;
+   padding: 8px;
+   margin-bottom: 12px;
+   border: 1px solid #ccc;
+   border-radius: 5px;
+ }
+ button {
+   padding: 10px 15px;
+   margin-right: 10px;
+   background: #1e90ff;
+   color: white;
+   border: none;
+   border-radius: 5px;
+   cursor: pointer;
+ }
+ button:hover { background: #0f6cd1; }
+ .result-line {
+   display: flex;
+   justify-content: space-between;
+   padding: 6px 0;
+   border-bottom: 1px solid #eee;
+ }
+ .info-btn {
+   background: #1e90ff;
+   color: white;
+   border-radius: 50%;
+   width: 18px;
+   height: 18px;
+   display: inline-flex;
+   justify-content: center;
+   align-items: center;
+   font-size: 12px;
+   cursor: pointer;
+   margin-left: 5px;
+ }
+ .tooltip {
+   position: absolute;
+   background: #222;
+   color: white;
+   padding: 8px 10px;
+   border-radius: 6px;
+   font-size: 13px;
+   max-width: 220px;
+   display: none;
+   z-index: 9999;
+ }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="box">
+    <h2>Inputs</h2>
+    <label>Daraz Commission % <span class="info-btn" data-key="comm">i</span></label>
+    <input id="comm" type="number">
+    <label>Payment Fee % <span class="info-btn" data-key="pay">i</span></label>
+    <input id="pay" type="number">
+    <label>Handling Fee <span class="info-btn" data-key="handling">i</span></label>
+    <input id="handling" type="number">
+    <label>Purchasing Price</label>
+    <input id="purchase" type="number">
+    <label>Shipping Charges (Customer Pays) <span class="info-btn" data-key="cusship">i</span></label>
+    <input id="cusship" type="number">
+    <label>Shipping Cost (Seller Pays) <span class="info-btn" data-key="sellership">i</span></label>
+    <input id="sellership" type="number">
+    <label>Packaging Cost</label>
+    <input id="pack" type="number">
+    <label>Extra Charges</label>
+    <input id="extra" type="number">
+    <label>VAT % <span class="info-btn" data-key="vat">i</span></label>
+    <input id="vat" type="number">
+    <label>Selling Price</label>
+    <input id="sell" type="number">
+    <label>Daraz Voucher % <span class="info-btn" data-key="voucher">i</span></label>
+    <input id="voucher" type="number">
+    <label>Income Tax % <span class="info-btn" data-key="income">i</span></label>
+    <input id="income" type="number">
+    <label>Sales Tax % <span class="info-btn" data-key="sales">i</span></label>
+    <input id="sales" type="number">
+    <button id="calculate">Calculate</button>
+    <button id="reset">Reset</button>
+    <button id="share">Share Result</button>
+  </div>
+  <div class="box">
+    <h2>Results</h2>
+    <div id="results"></div>
+  </div>
+</div>
+<div class="tooltip" id="tooltip"></div>
+<script>
+const infoData = {
+  comm: "Daraz commission is applied on selling price.",
+  pay: "Payment fee is applied on selling price.",
+  handling: "Handling fee is charged as a fixed amount.",
+  cusship: "Customer shipping charges are not added to product cost but VAT applies.",
+  sellership: "Seller shipping cost is added to total product cost and VAT applies.",
+  vat: "VAT applies on commission, payment fee, handling fee, shipping cost and shipping charges.",
+  voucher: "Daraz voucher percentage is deducted from selling price.",
+  income: "Income tax is applied on selling price.",
+  sales: "Sales tax is applied on selling price."
+};
+const tooltip = document.getElementById("tooltip");
+document.querySelectorAll(".info-btn").forEach(btn => {
+  btn.addEventListener("click", e => {
+    const text = infoData[btn.dataset.key];
+    tooltip.innerHTML = text;
+    tooltip.style.display = "block";
+    const rect = btn.getBoundingClientRect();
+    tooltip.style.left = rect.right + 10 + "px";
+    tooltip.style.top = rect.top + window.scrollY - 5 + "px";
+  });
+});
+document.addEventListener("click", function(e) {
+  if (!e.target.classList.contains("info-btn")) {
+    tooltip.style.display = "none";
+  }
+});
+function calculate() {
+  const get = id => Number(document.getElementById(id).value || 0);
+  let comm = get("sell") * get("comm") / 100;
+  let pay = get("sell") * get("pay") / 100;
+  let handling = get("handling");
+  let purchase = get("purchase");
+  let cusShipping = get("cusship");
+  let sellerShip = get("sellership");
+  let pack = get("pack");
+  let extra = get("extra");
+  let voucher = get("sell") * get("voucher") / 100;
+  let incomeT = get("sell") * get("income") / 100;
+  let salesT = get("sell") * get("sales") / 100;
+  let vatBase = comm + pay + handling + cusShipping + sellerShip;
+  let vat = vatBase * get("vat") / 100;
+  let totalCost = purchase + handling + sellerShip + pack + extra + comm + pay + vat + incomeT + salesT;
+  let received = get("sell") - voucher - cusShipping;
+  let profit = received - totalCost;
+  let profitPct = profit / totalCost * 100;
+  let out = "";
+  const line = (t,v) => `<div class='result-line'><span>${t}</span><span>${v.toFixed(2)}</span></div>`;
+  out += line("Selling Price", get("sell"));
+out += line("Purchasing Price", purchase);   // <-- ADD THIS LINE HERE
+out += line("Commission", comm);
+out += line("Payment Fee", pay);
+out += line("Handling Fee", handling);
+out += line("Customer Shipping", cusShipping);
+out += line("Seller Shipping Cost", sellerShip);
+out += line("Packaging Cost", pack);
+out += line("Extra Charges", extra);
+out += line("VAT", vat);
+out += line("Voucher Deduction", voucher);
+out += line("Income Tax", incomeT);
+out += line("Sales Tax", salesT);
+out += `<div class='result-line'><strong>Total Cost</strong><strong>${totalCost.toFixed(2)}</strong></div>`;
+out += `<div class='result-line'><strong>Profit</strong><strong>${profit.toFixed(2)}</strong></div>`;
+out += `<div class='result-line'><strong>Profit %</strong><strong>${profitPct.toFixed(2)}</strong></div>`;
+document.getElementById("results").innerHTML = out;
+}
+document.getElementById("calculate").onclick = calculate;
+document.getElementById("reset").onclick = () => location.reload();
+document.getElementById("share").onclick = () => {
+  const text = document.getElementById("results").innerText || "No results.";
+  const blob = new Blob([text], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "daraz-results.txt";
+  a.click();
+  URL.revokeObjectURL(url);
+};
+</script>
+</body>
+</html>
